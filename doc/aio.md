@@ -71,7 +71,7 @@ proc conn_handler {sock ip port} {
         if {$sock in [chan names]} {
             close $sock
         }
-    }]
+    }}]
     trace add command [info coroutine] delete $cleanup
 
     # It's usually more sensible to implement framing

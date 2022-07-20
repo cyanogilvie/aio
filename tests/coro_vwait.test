@@ -136,7 +136,6 @@ Done waiting
 			while {$waiting} {vwait waiting}
 			puts "Done waiting"
 		} -cleanup {
-			if {[info exists afterid]} {after cancel $afterid}
 			unset -nocomplain afterid stats waiting
 		} -match glob -output {::coro_1 waiting for stats
 ::coro_2 waiting for stats

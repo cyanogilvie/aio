@@ -372,7 +372,7 @@ coroutine coro_test apply {{} {
 					close $w
 				}}
 			}
-			aio gets $r 0.5
+			aio gets $r 0.8
 		} -cleanup {
 			thread::release $tid
 			if {$r in [chan names]} {close $r}
