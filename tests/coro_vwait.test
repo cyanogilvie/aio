@@ -1,0 +1,158 @@
+if {"::tcltest" ni [namespace children]} {
+	package require tcltest
+	namespace import ::tcltest::*
+}
+
+::tcltest::loadTestedCommands
+package require aio
+
+coroutine coro_test apply {{} {
+	global coro_test_done
+	unset -nocomplain coro_test_done
+	try {
+		test coro_vwait-1.0 {Multiple waiters} -body { #<<<
+			global waiting
+			set waiting	0
+			set afterid	[after 500 {set stats something}]
+			coroutine coro_1 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats 2
+					puts "[info coroutine] got stats: $stats"
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			coroutine coro_2 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats 2
+					puts "[info coroutine] got stats: $stats"
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			puts "Waiting for coros"
+			while {$waiting} {vwait waiting}
+			puts "Done waiting"
+		} -cleanup {
+			if {[info exists afterid]} {after cancel $afterid}
+			unset -nocomplain afterid stats waiting
+		} -match glob -output {::coro_1 waiting for stats
+::coro_2 waiting for stats
+Waiting for coros
+::coro_? got stats: something
+::coro_? got stats: something
+Done waiting
+}
+		#>>>
+		test coro_vwait-2.0 {Multiple waiters, timeout} -body { #<<<
+			global waiting
+			set waiting	0
+			set afterid	[after 2000 {set stats something}]
+			coroutine coro_1 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats .5
+					puts "[info coroutine] got stats: $stats"
+				} trap {AIO TIMEOUT CORO_VWAIT stats} {errmsg options} {
+					puts "[info coroutine] $errmsg"
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			coroutine coro_2 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats .5
+					puts "[info coroutine] got stats: $stats"
+				} trap {AIO TIMEOUT CORO_VWAIT stats} {errmsg options} {
+					puts "[info coroutine] $errmsg"
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			puts "Waiting for coros"
+			while {$waiting} {vwait waiting}
+			puts "Done waiting"
+		} -cleanup {
+			if {[info exists afterid]} {after cancel $afterid}
+			unset -nocomplain afterid stats waiting
+		} -match glob -output {::coro_1 waiting for stats
+::coro_2 waiting for stats
+Waiting for coros
+::coro_? Timeout waiting for a write of stats
+::coro_? Timeout waiting for a write of stats
+Done waiting
+}
+		#>>>
+		test coro_vwait-3.0 {Multiple waiters, timeout not caught} -body { #<<<
+			global waiting
+			set waiting	0
+			set afterid	[after 2000 {set stats something}]
+			coroutine coro_1 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats .5
+					puts "[info coroutine] got stats: $stats"
+				} on error {errmsg options} {
+					puts "Unhandled error [info coroutine] $errmsg"
+					return -options $options $errmsg
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			coroutine coro_2 apply {{} {
+				global stats waiting
+				incr waiting
+				try {
+					puts "[info coroutine] waiting for stats"
+					aio coro_vwait stats .5
+					puts "[info coroutine] got stats: $stats"
+				} on error {errmsg options} {
+					puts "Unhandled error [info coroutine] $errmsg"
+					return -options $options $errmsg
+				} finally {
+					incr waiting -1
+				}
+			}}
+
+			puts "Waiting for coros"
+			while {$waiting} {vwait waiting}
+			puts "Done waiting"
+		} -cleanup {
+			if {[info exists afterid]} {after cancel $afterid}
+			unset -nocomplain afterid stats waiting
+		} -match glob -output {::coro_1 waiting for stats
+::coro_2 waiting for stats
+Waiting for coros
+Unhandled error ::coro_? Timeout waiting for a write of stats
+Unhandled error ::coro_? Timeout waiting for a write of stats
+Done waiting
+}
+		#>>>
+	} finally {
+		set coro_test_done 1
+	}
+}}
+if {![info exists coro_test_done]} {vwait coro_test_done}
+
+::tcltest::cleanupTests
+return
+
+# vim: ft=tcl foldmethod=marker foldmarker=<<<,>>> ts=4 shiftwidth=4

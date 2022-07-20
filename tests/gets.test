@@ -1,0 +1,391 @@
+if {"::tcltest" ni [namespace children]} {
+	package require tcltest
+	namespace import ::tcltest::*
+}
+
+::tcltest::loadTestedCommands
+package require aio
+
+test gets_vwait-1.0 {Partial line reads} -setup { #<<<
+	package require Thread
+	set tid	[thread::create -preserved {
+		thread::wait
+		if {[info exists w] && $w in [chan names]} {close $w}
+	}]
+	lassign [lmap e [chan pipe] {
+		chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+		set e
+	}] r w
+	thread::transfer $tid $w
+	thread::send $tid [list set w $w]
+	thread::send $tid {
+		proc wait sec {
+			after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+			yield
+		}
+	}
+} -body {
+	thread::send $tid {
+		coroutine feed apply {{} {
+			global w
+			after 1 [list [info coroutine]]; yield
+			wait .1
+			puts -nonewline $w {he}; flush $w
+			wait .1
+			puts -nonewline $w {llo, }; flush $w
+			wait .1
+			puts $w {world}; flush $w
+		}}
+	}
+	aio gets $r 2.0
+} -cleanup {
+	thread::release $tid
+	if {$r in [chan names]} {close $r}
+	unset -nocomplain tid r w e
+} -result {hello, world}
+#>>>
+test gets_vwait-1.1 {Timeout before receiving anything} -setup { #<<<
+	package require Thread
+	set tid	[thread::create -preserved {
+		thread::wait
+		if {[info exists w] && $w in [chan names]} {close $w}
+	}]
+	lassign [lmap e [chan pipe] {
+		chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+		set e
+	}] r w
+	thread::transfer $tid $w
+	thread::send $tid [list set w $w]
+	thread::send $tid {
+		proc wait sec {
+			after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+			yield
+		}
+	}
+} -body {
+	thread::send $tid {
+		coroutine feeder apply {{} {
+			global w
+			after 1 [list [info coroutine]]; yield
+			wait 2
+			puts -nonewline $w {he}; flush $w
+			wait .1
+			puts -nonewline $w {llo, }; flush $w
+			wait .1
+			puts $w {world}; flush $w
+		}}
+	}
+	aio gets $r 0.3
+} -cleanup {
+	thread::release $tid
+	if {$r in [chan names]} {close $r}
+	unset -nocomplain tid r w e
+} -returnCodes error -result {Timeout waiting for readable} -errorCode {AIO TIMEOUT readable}
+#>>>
+test gets_vwait-1.2 {Timeout after receiving a partial line} -setup { #<<<
+	package require Thread
+	set tid	[thread::create -preserved {
+		thread::wait
+		if {[info exists w] && $w in [chan names]} {close $w}
+	}]
+	lassign [lmap e [chan pipe] {
+		chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+		set e
+	}] r w
+	thread::transfer $tid $w
+	thread::send $tid [list set w $w]
+	thread::send $tid {
+		proc wait sec {
+			after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+			yield
+		}
+	}
+} -body {
+	thread::send $tid {
+		coroutine feeder apply {{} {
+			global w
+			after 1 [list [info coroutine]]; yield
+			wait .1
+			puts -nonewline $w {he}; flush $w
+			wait 2
+			puts -nonewline $w {llo, }; flush $w
+			wait .1
+			puts $w {world}; flush $w
+		}}
+	}
+	aio gets $r 0.5
+} -cleanup {
+	thread::release $tid
+	if {$r in [chan names]} {close $r}
+	unset -nocomplain tid r w e
+} -returnCodes error -result {Timeout waiting for readable} -errorCode {AIO TIMEOUT readable}
+#>>>
+test gets_vwait-2.1 {Close before receiving anything} -setup { #<<<
+	package require Thread
+	set tid	[thread::create -preserved {
+		thread::wait
+		if {[info exists w] && $w in [chan names]} {close $w}
+	}]
+	lassign [lmap e [chan pipe] {
+		chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+		set e
+	}] r w
+	thread::transfer $tid $w
+	thread::send $tid [list set w $w]
+	thread::send $tid {
+		proc wait sec {
+			after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+			yield
+		}
+	}
+} -body {
+	thread::send $tid {
+		coroutine feeder apply {{} {
+			global w
+			after 1 [list [info coroutine]]; yield
+			wait .1
+			close $w
+		}}
+	}
+	aio gets $r 0.5
+} -cleanup {
+	thread::release $tid
+	if {$r in [chan names]} {close $r}
+	unset -nocomplain tid r w e
+} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+#>>>
+test gets_vwait-2.2 {Close after receiving a partial line} -setup { #<<<
+	package require Thread
+	set tid	[thread::create -preserved {
+		thread::wait
+		if {[info exists w] && $w in [chan names]} {close $w}
+	}]
+	lassign [lmap e [chan pipe] {
+		chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+		set e
+	}] r w
+	thread::transfer $tid $w
+	thread::send $tid [list set w $w]
+	thread::send $tid {
+		proc wait sec {
+			after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+			yield
+		}
+	}
+} -body {
+	thread::send $tid {
+		coroutine feeder apply {{} {
+			global w
+			after 1 [list [info coroutine]]; yield
+			wait .1
+			puts -nonewline $w {he}; flush $w
+			wait .1
+			close $w
+		}}
+	}
+	aio gets $r 0.5
+} -cleanup {
+	thread::release $tid
+	if {$r in [chan names]} {close $r}
+	unset -nocomplain tid r w e
+} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+#>>>
+
+coroutine coro_test apply {{} {
+	global coro_test_done
+	unset -nocomplain coro_test_done
+	try {
+		test gets_coro-1.0 {Partial line reads} -setup { #<<<
+			package require Thread
+			set tid	[thread::create -preserved {
+				thread::wait
+				if {[info exists w] && $w in [chan names]} {close $w}
+			}]
+			lassign [lmap e [chan pipe] {
+				chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+				set e
+			}] r w
+			thread::transfer $tid $w
+			thread::send $tid [list set w $w]
+			thread::send $tid {
+				proc wait sec {
+					after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+					yield
+				}
+			}
+		} -body {
+			thread::send $tid {
+				coroutine feed apply {{} {
+					global w
+					after 1 [list [info coroutine]]; yield
+					wait .1
+					puts -nonewline $w {he}; flush $w
+					wait .1
+					puts -nonewline $w {llo, }; flush $w
+					wait .1
+					puts $w {world}; flush $w
+				}}
+			}
+			aio gets $r 2.0
+		} -cleanup {
+			thread::release $tid
+			if {$r in [chan names]} {close $r}
+			unset -nocomplain tid r w e
+		} -result {hello, world}
+		#>>>
+		test gets_coro-1.1 {Timeout before receiving anything} -setup { #<<<
+			package require Thread
+			set tid	[thread::create -preserved {
+				thread::wait
+				if {[info exists w] && $w in [chan names]} {close $w}
+			}]
+			lassign [lmap e [chan pipe] {
+				chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+				set e
+			}] r w
+			thread::transfer $tid $w
+			thread::send $tid [list set w $w]
+			thread::send $tid {
+				proc wait sec {
+					after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+					yield
+				}
+			}
+		} -body {
+			thread::send $tid {
+				coroutine feeder apply {{} {
+					global w
+					after 1 [list [info coroutine]]; yield
+					wait 2
+					puts -nonewline $w {he}; flush $w
+					wait .1
+					puts -nonewline $w {llo, }; flush $w
+					wait .1
+					puts $w {world}; flush $w
+				}}
+			}
+			aio gets $r 0.3
+		} -cleanup {
+			thread::release $tid
+			if {$r in [chan names]} {close $r}
+			unset -nocomplain tid r w e
+		} -returnCodes error -result {Timeout waiting for readable} -errorCode {AIO TIMEOUT readable}
+		#>>>
+		test gets_coro-1.2 {Timeout after receiving a partial line} -setup { #<<<
+			package require Thread
+			set tid	[thread::create -preserved {
+				thread::wait
+				if {[info exists w] && $w in [chan names]} {close $w}
+			}]
+			lassign [lmap e [chan pipe] {
+				chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+				set e
+			}] r w
+			thread::transfer $tid $w
+			thread::send $tid [list set w $w]
+			thread::send $tid {
+				proc wait sec {
+					after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+					yield
+				}
+			}
+		} -body {
+			thread::send $tid {
+				coroutine feeder apply {{} {
+					global w
+					after 1 [list [info coroutine]]; yield
+					wait .1
+					puts -nonewline $w {he}; flush $w
+					wait 2
+					puts -nonewline $w {llo, }; flush $w
+					wait .1
+					puts $w {world}; flush $w
+				}}
+			}
+			aio gets $r 0.5
+		} -cleanup {
+			thread::release $tid
+			if {$r in [chan names]} {close $r}
+			unset -nocomplain tid r w e
+		} -returnCodes error -result {Timeout waiting for readable} -errorCode {AIO TIMEOUT readable}
+		#>>>
+		test gets_coro-2.1 {Close before receiving anything} -setup { #<<<
+			package require Thread
+			set tid	[thread::create -preserved {
+				thread::wait
+				if {[info exists w] && $w in [chan names]} {close $w}
+			}]
+			lassign [lmap e [chan pipe] {
+				chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+				set e
+			}] r w
+			thread::transfer $tid $w
+			thread::send $tid [list set w $w]
+			thread::send $tid {
+				proc wait sec {
+					after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+					yield
+				}
+			}
+		} -body {
+			thread::send $tid {
+				coroutine feeder apply {{} {
+					global w
+					after 1 [list [info coroutine]]; yield
+					wait .1
+					close $w
+				}}
+			}
+			aio gets $r 0.5
+		} -cleanup {
+			thread::release $tid
+			if {$r in [chan names]} {close $r}
+			unset -nocomplain tid r w e
+		} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+		#>>>
+		test gets_coro-2.2 {Close after receiving a partial line} -setup { #<<<
+			package require Thread
+			set tid	[thread::create -preserved {
+				thread::wait
+				if {[info exists w] && $w in [chan names]} {close $w}
+			}]
+			lassign [lmap e [chan pipe] {
+				chan configure $e -blocking 0 -buffering none -translation lf -encoding utf-8 -eofchar {}
+				set e
+			}] r w
+			thread::transfer $tid $w
+			thread::send $tid [list set w $w]
+			thread::send $tid {
+				proc wait sec {
+					after [expr {max(0, int($sec*1000))}] [list [info coroutine]]
+					yield
+				}
+			}
+		} -body {
+			thread::send $tid {
+				coroutine feeder apply {{} {
+					global w
+					after 1 [list [info coroutine]]; yield
+					wait .1
+					puts -nonewline $w {he}; flush $w
+					wait .1
+					close $w
+				}}
+			}
+			aio gets $r 0.5
+		} -cleanup {
+			thread::release $tid
+			if {$r in [chan names]} {close $r}
+			unset -nocomplain tid r w e
+		} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+		#>>>
+	} finally {
+		set coro_test_done 1
+	}
+}}
+if {![info exists coro_test_done]} {vwait coro_test_done}
+
+::tcltest::cleanupTests
+return
+
+# vim: ft=tcl foldmethod=marker foldmarker=<<<,>>> ts=4 shiftwidth=4
