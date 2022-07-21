@@ -1,6 +1,6 @@
 DESTDIR=/usr/local
 PACKAGE_NAME=aio
-VER=1.1
+VER=1.2
 TCLSH=tclsh
 
 all: tm/$(PACKAGE_NAME)-$(VER).tm README.md doc/$(PACKAGE_NAME).n

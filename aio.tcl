@@ -84,11 +84,21 @@ namespace eval ::aio {
 		set coro	[list [info coroutine] set]
         if {$seconds ne {}} {
             set afterid [after [expr {max(0, int($seconds * 1000))}] [list [info coroutine] timeout]]
-        }
-		upvar 1 $var olvar
-		trace add variable olvar write $coro
+        } else {
+			set afterid	""
+		}
+		set fqvar	[uplevel 1 [list namespace which -variable $var]]
+
+		set cleanup	[list apply {{fqvar coro afterid oldname newname op} {
+			after cancel $afterid
+			trace remove variable $fqvar write $coro
+		}} $fqvar $coro $afterid]
+		trace add command [info coroutine] delete $cleanup
+
+		trace add variable $fqvar write $coro
 		lassign [yieldto return -level 0] ev n1 n2 op
-		trace remove variable olvar write $coro
+		trace remove variable $fqvar write $coro
+		trace remove command [info coroutine] delete $cleanup
         if {[info exists afterid]} {after cancel $afterid}
         if {$ev eq "timeout"} {
             throw [list AIO TIMEOUT CORO_VWAIT $var] "Timeout waiting for a write of $var"

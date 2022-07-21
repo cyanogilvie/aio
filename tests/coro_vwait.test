@@ -171,6 +171,29 @@ stats set ok
 Done waiting
 }
 		#>>>
+		test coro_vwait-4.0 {Coro deleted while waiting on a var} -body { #<<<
+			global stats
+			coroutine coro apply {{} {
+				global stats
+				while 1 {
+					set res	[aio coro_vwait stats]
+					puts "Got stats: ($res)"
+				}
+			}}
+			set stats	first
+			update
+			rename coro {}
+			set stats	second
+			update
+			info commands coro
+		} -cleanup {
+			if {[info commands coro] ne {}} {
+				rename coro {}
+			}
+			unset -nocomplain stats
+		} -result {} -output {Got stats: (first)
+}
+		#>>>
 	} finally {
 		set coro_test_done 1
 	}
