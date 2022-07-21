@@ -1,3 +1,5 @@
+package require Tcl 8.6	;# For coroutine support
+
 namespace eval ::aio {
 	namespace export *
 	namespace ensemble create -prefixes no -map {
@@ -7,8 +9,8 @@ namespace eval ::aio {
 		read		_read
     }
 
-	variable _wait_for_res
-	array set _wait_for_res	{}
+	variable _waitfor_res
+	array set _waitfor_res	{}
 
 	proc waitfor {what chan {seconds {}}} { #<<<
 		variable _waitfor_seq
@@ -35,7 +37,8 @@ namespace eval ::aio {
 			}
 
 			if {$seconds ne ""} {
-				set timeout_afterid	[after [expr {max(0, int($seconds * 1000))}] [list {*}$ev_prefix timeout]]
+				#puts stderr "waitfor setting timeout for [expr {max(0, int($seconds * 1000))}] ms"
+				set timeout_afterid	[after [expr {max(0, int(ceil($seconds * 1000)))}] [list {*}$ev_prefix timeout]]
 			}
             foreach e $what {
                 if {$e ni {readable writable}} {error "Invalid event \"$e\": must be readable or writable"}
@@ -56,6 +59,7 @@ namespace eval ::aio {
 			try $wait_cmd
 			#puts stderr "Got readable on $chan"
 
+			#puts stderr "waitfor outcome: ($_waitfor_res($my_seq))"
 			switch -- $_waitfor_res($my_seq) {
 				readable {return readable}
 				writable {return writable}
@@ -81,22 +85,35 @@ namespace eval ::aio {
         if {$seconds ne {}} {
             set afterid [after [expr {max(0, int($seconds * 1000))}] [list [info coroutine] timeout]]
         }
-		uplevel 1 [list trace add variable $var write $coro]
-		lassign [yieldto return -level 0] ev
-		uplevel 1 [trace remove variable $var write $coro]
+		upvar 1 $var olvar
+		trace add variable olvar write $coro
+		lassign [yieldto return -level 0] ev n1 n2 op
+		trace remove variable olvar write $coro
         if {[info exists afterid]} {after cancel $afterid}
         if {$ev eq "timeout"} {
             throw [list AIO TIMEOUT CORO_VWAIT $var] "Timeout waiting for a write of $var"
         }
+		if {$n2 ne {}} {append n1 ($n2)}
+		upvar 1 $n1 lvar
+		set val	$lvar
+
+		# Defer returning from coro_vwait so that an error in the caller's following code doesn't
+		# throw a {TCL WRITE VARNAME} exception on the set that triggered the trace
+		after 0 [list [info coroutine]]
+		yield
+
+		set val	;# Return the value of the var at the time that the trace was triggered
 	}
 
 	#>>>
 	proc _gets {chan {seconds {}}} { #<<<
+		set start	[clock microseconds]
 		if {$seconds ne {}} {
-			set horizon	[expr {[clock seconds] + $seconds}]
+			set horizon	[expr {[clock microseconds] + $seconds*1e6}]
 		}
 		while 1 {
 			set line	[gets $chan]
+			#puts stderr "[expr {[clock microseconds] - $start}] aio gets back from gets \$chan, line: ($line), eof: [eof $chan], blocked: [chan blocked $chan]"
 
 			if {[chan eof $chan]} {
 				throw {AIO CLOSED} "$chan was closed while waiting for a line"
@@ -104,7 +121,7 @@ namespace eval ::aio {
 
 			if {[chan blocked $chan]} {
 				if {[info exists horizon]} {
-					waitfor readable $chan [expr {$horizon - [clock seconds]}]
+					waitfor readable $chan [expr {($horizon - [clock microseconds])/1e6}]
 				} else {
 					waitfor readable $chan
 				}
@@ -118,19 +135,19 @@ namespace eval ::aio {
 	#>>>
 	proc _read {chan length {seconds {}}} { #<<<
 		if {$seconds ne {}} {
-			set horizon	[expr {[clock seconds] + $seconds}]
+			set horizon	[expr {[clock microseconds] + $seconds*1e6}]
 		}
 		set buf	{}
 		while {[set remain [expr {$length - [string length $buf]}]] > 0} {
 			append buf	[read $chan $remain]
 
 			if {[chan eof $chan]} {
-				throw {AIO CLOSED} "$chan was closed while waiting for a line"
+				throw {AIO CLOSED} "$chan was closed while waiting for a read of $length chars"
 			}
 
 			if {[chan blocked $chan]} {
 				if {[info exists horizon]} {
-					waitfor readable $chan [expr {$horizon - [clock seconds]}]
+					waitfor readable $chan [expr {($horizon - [clock microseconds])/1e6}]
 				} else {
 					waitfor readable $chan
 				}

@@ -28,7 +28,7 @@ test read_vwait-1.0 {Partial reads} -setup { #<<<
 	thread::send $tid {
 		coroutine feed apply {{} {
 			global w
-			after 1 [list [info coroutine]]; yield
+			after 0 [list [info coroutine]]; yield
 			wait .1
 			puts -nonewline $w {he}; flush $w
 			wait .1
@@ -66,7 +66,7 @@ test read_vwait-1.1 {Timeout before receiving anything} -setup { #<<<
 	thread::send $tid {
 		coroutine feeder apply {{} {
 			global w
-			after 1 [list [info coroutine]]; yield
+			after 0 [list [info coroutine]]; yield
 			wait 2
 			puts -nonewline $w {he}; flush $w
 			wait .1
@@ -104,7 +104,7 @@ test read_vwait-1.2 {Timeout after receiving a partial read} -setup { #<<<
 	thread::send $tid {
 		coroutine feeder apply {{} {
 			global w
-			after 1 [list [info coroutine]]; yield
+			after 0 [list [info coroutine]]; yield
 			wait .1
 			puts -nonewline $w {he}; flush $w
 			wait 2
@@ -142,7 +142,7 @@ test read_vwait-2.1 {Close before receiving anything} -setup { #<<<
 	thread::send $tid {
 		coroutine feeder apply {{} {
 			global w
-			after 1 [list [info coroutine]]; yield
+			after 0 [list [info coroutine]]; yield
 			wait .1
 			close $w
 		}}
@@ -152,7 +152,7 @@ test read_vwait-2.1 {Close before receiving anything} -setup { #<<<
 	thread::release $tid
 	if {$r in [chan names]} {close $r}
 	unset -nocomplain tid r w e
-} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+} -returnCodes error -match glob -result {* was closed while waiting for a read of 12 chars} -errorCode {AIO CLOSED}
 #>>>
 test read_vwait-2.2 {Close after receiving a partial read} -setup { #<<<
 	package require Thread
@@ -176,7 +176,7 @@ test read_vwait-2.2 {Close after receiving a partial read} -setup { #<<<
 	thread::send $tid {
 		coroutine feeder apply {{} {
 			global w
-			after 1 [list [info coroutine]]; yield
+			after 0 [list [info coroutine]]; yield
 			wait .1
 			puts -nonewline $w {he}; flush $w
 			wait .1
@@ -188,7 +188,7 @@ test read_vwait-2.2 {Close after receiving a partial read} -setup { #<<<
 	thread::release $tid
 	if {$r in [chan names]} {close $r}
 	unset -nocomplain tid r w e
-} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+} -returnCodes error -match glob -result {* was closed while waiting for a read of 12 chars} -errorCode {AIO CLOSED}
 #>>>
 
 coroutine coro_test apply {{} {
@@ -217,7 +217,7 @@ coroutine coro_test apply {{} {
 			thread::send $tid {
 				coroutine feed apply {{} {
 					global w
-					after 1 [list [info coroutine]]; yield
+					after 0 [list [info coroutine]]; yield
 					wait .1
 					puts -nonewline $w {he}; flush $w
 					wait .1
@@ -255,7 +255,7 @@ coroutine coro_test apply {{} {
 			thread::send $tid {
 				coroutine feeder apply {{} {
 					global w
-					after 1 [list [info coroutine]]; yield
+					after 0 [list [info coroutine]]; yield
 					wait 2
 					puts -nonewline $w {he}; flush $w
 					wait .1
@@ -293,7 +293,7 @@ coroutine coro_test apply {{} {
 			thread::send $tid {
 				coroutine feeder apply {{} {
 					global w
-					after 1 [list [info coroutine]]; yield
+					after 0 [list [info coroutine]]; yield
 					wait .1
 					puts -nonewline $w {he}; flush $w
 					wait 2
@@ -331,7 +331,7 @@ coroutine coro_test apply {{} {
 			thread::send $tid {
 				coroutine feeder apply {{} {
 					global w
-					after 1 [list [info coroutine]]; yield
+					after 0 [list [info coroutine]]; yield
 					wait .1
 					close $w
 				}}
@@ -341,7 +341,7 @@ coroutine coro_test apply {{} {
 			thread::release $tid
 			if {$r in [chan names]} {close $r}
 			unset -nocomplain tid r w e
-		} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+		} -returnCodes error -match glob -result {* was closed while waiting for a read of 12 chars} -errorCode {AIO CLOSED}
 		#>>>
 		test read_coro-2.2 {Close after receiving a partial read} -setup { #<<<
 			package require Thread
@@ -365,7 +365,7 @@ coroutine coro_test apply {{} {
 			thread::send $tid {
 				coroutine feeder apply {{} {
 					global w
-					after 1 [list [info coroutine]]; yield
+					after 0 [list [info coroutine]]; yield
 					wait .1
 					puts -nonewline $w {he}; flush $w
 					wait .1
@@ -377,7 +377,7 @@ coroutine coro_test apply {{} {
 			thread::release $tid
 			if {$r in [chan names]} {close $r}
 			unset -nocomplain tid r w e
-		} -returnCodes error -match glob -result {* was closed while waiting for a line} -errorCode {AIO CLOSED}
+		} -returnCodes error -match glob -result {* was closed while waiting for a read of 12 chars} -errorCode {AIO CLOSED}
 		#>>>
 	} finally {
 		set coro_test_done 1

@@ -3,6 +3,14 @@ if {"::tcltest" ni [namespace children]} {
 	namespace import ::tcltest::*
 }
 
+interp bgerror {} [list apply {{errmsg options} {
+	if {[dict get $options -errorcode] eq {AIO TIMEOUT CORO_VWAIT stats}} {
+		# This is expected from coro_vwait-3.0, but is called after the test completes
+		#return
+	}
+	puts stderr "bgerror [dict get $options -errorcode]\n[dict get $options -errorinfo]"
+}}]
+
 ::tcltest::loadTestedCommands
 package require aio
 
@@ -13,14 +21,17 @@ coroutine coro_test apply {{} {
 		test coro_vwait-1.0 {Multiple waiters} -body { #<<<
 			global waiting
 			set waiting	0
-			set afterid	[after 500 {set stats something}]
+			set afterid	[after 500 {set stats something; set stats updated}]
 			coroutine coro_1 apply {{} {
 				global stats waiting
 				incr waiting
 				try {
 					puts "[info coroutine] waiting for stats"
-					aio coro_vwait stats 2
-					puts "[info coroutine] got stats: $stats"
+					set res	[aio coro_vwait stats 2]
+					puts "[info coroutine] got stats: $stats (res: $res)"
+				} on error {errmsg options} {
+					puts "[info coroutine] uncaught error: [dict get $options -errorcode]: [dict get $options -errorinfo]"
+					return -options $options $errmsg
 				} finally {
 					incr waiting -1
 				}
@@ -31,8 +42,11 @@ coroutine coro_test apply {{} {
 				incr waiting
 				try {
 					puts "[info coroutine] waiting for stats"
-					aio coro_vwait stats 2
-					puts "[info coroutine] got stats: $stats"
+					set res [aio coro_vwait stats 2]
+					puts "[info coroutine] got stats: $stats (res: $res)"
+				} on error {errmsg options} {
+					puts "[info coroutine] uncaught error: [dict get $options -errorcode]: [dict get $options -errorinfo]"
+					return -options $options $errmsg
 				} finally {
 					incr waiting -1
 				}
@@ -47,8 +61,8 @@ coroutine coro_test apply {{} {
 		} -match glob -output {::coro_1 waiting for stats
 ::coro_2 waiting for stats
 Waiting for coros
-::coro_? got stats: something
-::coro_? got stats: something
+::coro_? got stats: updated (res: something)
+::coro_? got stats: updated (res: something)
 Done waiting
 }
 		#>>>
@@ -101,7 +115,18 @@ Done waiting
 		test coro_vwait-3.0 {Multiple waiters, timeout not caught} -body { #<<<
 			global waiting
 			set waiting	0
-			set afterid	[after 2000 {set stats something}]
+			incr waiting	;# for the afterid
+			set afterid	[after 750 {
+				try {
+					set stats something
+				} on ok {} {
+					puts "stats set ok"
+				} on error {errmsg options} {
+					puts "set stats error: [dict get $options -errorcode]\n[dict get $options -errorinfo]"
+				} finally {
+					incr waiting -1
+				}
+			}]
 			coroutine coro_1 apply {{} {
 				global stats waiting
 				incr waiting
@@ -142,6 +167,7 @@ Done waiting
 Waiting for coros
 Unhandled error ::coro_? Timeout waiting for a write of stats
 Unhandled error ::coro_? Timeout waiting for a write of stats
+stats set ok
 Done waiting
 }
 		#>>>
