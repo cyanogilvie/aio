@@ -17,7 +17,7 @@ install-tm: tm/$(PACKAGE_NAME)-$(VER).tm
 
 install-doc: docs
 	mkdir -p $(DESTDIR)/man
-	cp $< $(DESTDIR)/man/
+	cp doc/$(PACKAGE_NAME).n $(DESTDIR)/man/
 
 install: install-tm install-doc
 
