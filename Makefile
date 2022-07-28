@@ -1,6 +1,6 @@
 DESTDIR=/usr/local
 PACKAGE_NAME=aio
-VER=1.2
+VER=1.3
 TCLSH=tclsh
 
 all: tm/$(PACKAGE_NAME)-$(VER).tm README.md doc/$(PACKAGE_NAME).n
@@ -9,7 +9,7 @@ tm/$(PACKAGE_NAME)-$(VER).tm: aio.tcl
 	mkdir -p tm
 	cp aio.tcl tm/$(PACKAGE_NAME)-$(VER).tm
 
-docs: doc/$(PACKAGE_NAME).n
+docs: doc/$(PACKAGE_NAME).n README.md
 
 install-tm: tm/$(PACKAGE_NAME)-$(VER).tm
 	mkdir -p $(DESTDIR)/lib/tcl8/site-tcl

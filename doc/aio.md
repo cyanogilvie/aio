@@ -1,6 +1,6 @@
-% aio(n) 1.2 | Asynchronous IO Helpers for Tcl
+% aio(n) 1.3 | Asynchronous IO Helpers for Tcl
 % Cyan Ogilvie
-% 1.2
+% 1.3
 
 # NAME
 
@@ -8,7 +8,7 @@ aio - Asynchronous IO Helpers for Tcl
 
 # SYNOPSIS
 
-**package require aio** ?1.2?
+**package require aio** ?1.3?
 
 **aio waitfor** *what* *chan* ?*seconds*?
 
@@ -17,6 +17,8 @@ aio - Asynchronous IO Helpers for Tcl
 **aio gets** *chan* ?*seconds*?
 
 **aio read** *chan* *length* ?*seconds*?
+
+**aio coro_sleep** *seconds*
 
 # DESCRIPTION
 
@@ -59,6 +61,10 @@ mode).
     an exception is thrown with the errorcode **AIO TIMEOUT readable** if the read timed out.
     If the channel is closed while waiting for *length* characters an exception is thrown with the
     errorcode **AIO CLOSED**.
+
+**aio coro_sleep** *seconds*
+:   Yields the current coroutine for *seconds* seconds, taking care to clean up the after event
+    if the coroutine is deleted before it fires.
 
 # EXAMPLES
 
@@ -120,11 +126,12 @@ lassign $argv ip port
 
 set sock    [socket -async $ip $port]
 
-chan configure $sock -blocking no -buffering none \
+chan configure $sock -blocking yes -buffering none \
     -encoding utf-8 -translation lf -eofchar {}
 
 # Wait up to 5 seconds for the socket to connect
 aio waitfor writable $sock 5.0
+chan configure $sock -blocking no
 
 set msg "Some message containing\nnewlines and some \u306f unicode"
 puts -nonewline $sock [string length $msg]\n$msg
@@ -191,7 +198,8 @@ sources of IO blocking in Tcl (even when all channels are set to non-blocking
 mode) are client socket establishment and DNS resolution.  The first of these
 can be addressed with the **-async** flag to the **socket** command, and then
 waiting in the event loop for the connect to complete with
-**aio waitfor writable**.  The second (DNS resolution delays) can be addressed with the
+**aio waitfor writable** (channel must be in blocking mode for this).  The
+second (DNS resolution delays) can be addressed with the
 [resolve package](https://github.com/cyanogilvie/resolve) by doing the 
 name lookup first in a non-blocking way and then handing the IP to **socket**.
 

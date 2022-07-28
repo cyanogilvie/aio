@@ -167,6 +167,18 @@ namespace eval ::aio {
 	}
 
 	#>>>
+	proc coro_sleep seconds { #<<<
+		set afterid	[after [expr {int(ceil($sec * 1000))}] [list [info coroutine]]]
+		set cleanup	[list apply {{afterid old new op} {after cancel $afterid}} $afterid]
+		trace add command [info coroutine] delete $cleanup
+		try {
+			yield
+		} finally {
+			trace remove command [info coroutine] delete $cleanup
+		}
+	}
+
+	#>>>
 }
 
 # vim: ft=tcl foldmethod=marker foldmarker=<<<,>>> ts=4 shiftwidth=4
