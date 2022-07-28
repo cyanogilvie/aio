@@ -1,6 +1,6 @@
-% aio(n) 1.4 | Asynchronous IO Helpers for Tcl
+% aio(n) 1.5 | Asynchronous IO Helpers for Tcl
 % Cyan Ogilvie
-% 1.4
+% 1.5
 
 # NAME
 
@@ -8,7 +8,7 @@ aio - Asynchronous IO Helpers for Tcl
 
 # SYNOPSIS
 
-**package require aio** ?1.4?
+**package require aio** ?1.5?
 
 **aio waitfor** *what* *chan* ?*seconds*?
 
