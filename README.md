@@ -4,7 +4,7 @@ aio - Asynchronous IO Helpers for Tcl
 
 # SYNOPSIS
 
-**package require aio** ?1.3?
+**package require aio** ?1.4?
 
 **aio waitfor** *what* *chan* ?*seconds*?
 

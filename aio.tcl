@@ -7,6 +7,7 @@ namespace eval ::aio {
 		coro_vwait	coro_vwait
 		gets		_gets
 		read		_read
+		coro_sleep	coro_sleep
     }
 
 	variable _waitfor_res
