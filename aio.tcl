@@ -169,6 +169,7 @@ namespace eval ::aio {
 
 	#>>>
 	proc coro_sleep seconds { #<<<
+		if {[info coroutine] eq {}} {error "Not in a coroutine"}
 		set afterid	[after [expr {int(ceil($seconds * 1000))}] [list [info coroutine]]]
 		set cleanup	[list apply {{afterid old new op} {after cancel $afterid}} $afterid]
 		trace add command [info coroutine] delete $cleanup
