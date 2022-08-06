@@ -89,6 +89,12 @@ namespace eval ::aio {
 			set afterid	""
 		}
 		set fqvar	[uplevel 1 [list namespace which -variable $var]]
+		if {$fqvar eq ""} {
+			set fqvar	$var
+			if {![string match ::* $fqvar]} {
+				set fqvar	::$fqvar
+			}
+		}
 
 		set cleanup	[list apply {{fqvar coro afterid oldname newname op} {
 			after cancel $afterid
