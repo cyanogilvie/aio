@@ -1,4 +1,5 @@
-DESTDIR=/usr/local
+DESTDIR=
+PREFIX=/usr/local
 PACKAGE_NAME=aio
 VER=1.7
 TCLSH=tclsh
@@ -12,12 +13,12 @@ tm/$(PACKAGE_NAME)-$(VER).tm: aio.tcl
 docs: doc/$(PACKAGE_NAME).n README.md
 
 install-tm: tm/$(PACKAGE_NAME)-$(VER).tm
-	mkdir -p $(DESTDIR)/lib/tcl8/site-tcl
-	cp $< $(DESTDIR)/lib/tcl8/site-tcl/
+	mkdir -p $(DESTDIR)$(PREFIX)/lib/tcl8/site-tcl
+	cp $< $(DESTDIR)$(PREFIX)/lib/tcl8/site-tcl/
 
 install-doc: docs
-	mkdir -p $(DESTDIR)/man
-	cp doc/$(PACKAGE_NAME).n $(DESTDIR)/man/
+	mkdir -p $(DESTDIR)$(PREFIX)/man
+	cp doc/$(PACKAGE_NAME).n $(DESTDIR)$(PREFIX)/man/
 
 install: install-tm install-doc
 
