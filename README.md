@@ -80,7 +80,7 @@ proc conn_handler {sock ip port} {
         if {$sock in [chan names]} {
             close $sock
         }
-    }}]
+    }} $sock]
     trace add command [info coroutine] delete $cleanup
 
     # It's usually more sensible to implement framing
@@ -206,5 +206,5 @@ lookup first in a non-blocking way and then handing the IP to
 
 # LICENSE
 
-This package Copyright 2022 Cyan Ogilvie, and is made available under
+This package Copyright 2023 Cyan Ogilvie, and is made available under
 the same license terms as the Tcl Core.
