@@ -192,8 +192,8 @@ Produces output like:
 One reason to reach for tools like these is to achieve single-threaded
 non-blocking network servers and clients, but in that case it’s
 important to ensure that the thread can never block on IO (not servicing
-events) or it will stave all the other sources and sinks. Two common but
-possibly unexpected sources of IO blocking in Tcl (even when all
+events) or it will starve all the other sources and sinks. Two common
+but possibly unexpected sources of IO blocking in Tcl (even when all
 channels are set to non-blocking mode) are client socket establishment
 and DNS resolution. The first of these can be addressed with the
 **-async** flag to the **socket** command, and then waiting in the event
