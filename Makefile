@@ -23,7 +23,7 @@ install-doc: docs
 install: install-tm install-doc
 
 clean:
-	-rm -r tm
+	-rm -rf tm
 
 README.md: doc/$(PACKAGE_NAME).md
 	pandoc --standalone --from markdown --to gfm doc/$(PACKAGE_NAME).md --output README.md
