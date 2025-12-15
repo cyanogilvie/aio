@@ -14,7 +14,9 @@ docs: doc/$(PACKAGE_NAME).n README.md
 
 install-tm: tm/$(PACKAGE_NAME)-$(VER).tm
 	mkdir -p $(DESTDIR)$(PREFIX)/lib/tcl8/site-tcl
+	mkdir -p $(DESTDIR)$(PREFIX)/lib/tcl9/site-tcl
 	cp $< $(DESTDIR)$(PREFIX)/lib/tcl8/site-tcl/
+	cp $< $(DESTDIR)$(PREFIX)/lib/tcl9/site-tcl/
 
 install-doc: docs
 	mkdir -p $(DESTDIR)$(PREFIX)/man

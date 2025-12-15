@@ -1,4 +1,4 @@
-package require Tcl 8.6	;# For coroutine support
+package require Tcl 8.6-	;# For coroutine support
 
 namespace eval ::aio {
 	namespace export *
